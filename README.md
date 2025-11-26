@@ -23,17 +23,17 @@ python client.py --target "apple tree" \
 --batch-size 1
 
 python client.py --target "pistachio tree" \
---image './examples/pistachio_tree.jpeg' \
+--image './examples/pistachio_tree.png' \
 --api-key <your_api_key> \
 --batch-size 1
 
 python client.py --target "vine tree" \
---image './examples/vine_tree.jpeg' \
+--image './examples/vine_tree.png' \
 --api-key <your_api_key> \
 --batch-size 1
 
 python client.py --target "strawberry bed with black plastic cover" \
---image './examples/strawberry_bed.jpeg' \
+--image './examples/strawberry_bed.png' \
 --api-key <your_api_key> \
 --batch-size 1
 ```
