@@ -14,7 +14,7 @@ Go to [api page](https://mimiaigen.com/api)
 Choose your api-key name, press create and copy the api key.
 
 
-### Step.3 Calling the client
+### Step.3 Calling the client with image input
 
 ```
 python client.py --target "apple tree" \
@@ -38,3 +38,16 @@ python client.py --target "strawberry bed with black plastic cover" \
 --batch-size 1
 ```
 
+Or instead calling with target or prompt only
+
+```
+python client.py --target "a single apple" \
+--api-key <your_api_key> \
+--batch-size 1
+
+python client.py --target "a single apple" \
+--prompt 'Generate {TARGET} in a diverse way.' \
+--api-key <your_api_key> \
+--batch-size 1
+
+```
