@@ -34,6 +34,7 @@ python client.py --target "vine tree" \
 
 python client.py --target "strawberry bed with black plastic cover" \
 --image './examples/strawberry_bed.png' \
+--prompt "Generate {TARGET} in different styles, top-down 45 degree view, only single row of the {TARGET}, make realistic variations,no ground, no tool, not toy, only realistic {TARGET}" \
 --api-key <your_api_key> \
 --batch-size 1
 ```
