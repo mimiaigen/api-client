@@ -10,7 +10,7 @@ from typing import Optional, Dict, Any
 # Constants
 API_URL = "https://mimiaigen--physical-data-agent-api.modal.run"
 DEFAULT_PROMPT = """
-Generate {TARGET} in different styles, make variations,
+Generate {TARGET} in different styles, make realistic variations,
 no ground, no tool, not toy, only realistic {TARGET}
 """
 
