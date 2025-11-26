@@ -18,7 +18,22 @@ Choose your api-key name, press create and copy the api key.
 
 ```
 python client.py --target "apple tree" \
---image './example/apple_tree.jpeg' \
+--image './examples/apple_tree.jpeg' \
+--api-key <your_api_key> \
+--batch-size 1
+
+python client.py --target "pistachio tree" \
+--image './examples/pistachio_tree.jpeg' \
+--api-key <your_api_key> \
+--batch-size 1
+
+python client.py --target "vine tree" \
+--image './examples/vine_tree.jpeg' \
+--api-key <your_api_key> \
+--batch-size 1
+
+python client.py --target "strawberry bed with black plastic cover" \
+--image './examples/strawberry_bed.jpeg' \
 --api-key <your_api_key> \
 --batch-size 1
 ```
