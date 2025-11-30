@@ -178,10 +178,6 @@ def main():
     
     args = parser.parse_args()
     
-    # Validation
-    if not args.job_id and not args.target:
-        parser.error("The following arguments are required: --target (unless --job_id is specified)")
-    
     api_key = get_api_key(args.api_key)
     
     # Logic Flow

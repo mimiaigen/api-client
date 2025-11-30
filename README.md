@@ -35,9 +35,8 @@ python client.py --target "vine tree" \
 python client.py --target "strawberry bed with black plastic cover" \
 --image './examples/strawberry_bed.png' \
 --prompt "Isolate the input image into a single row of {TARGET} top-down 45 degree view, transparent background, and generate in different styles with realistic variations, no ground, no tool, not toy, only realistic {TARGET}" \
---api-key mimiaigen-56229deb31c04e11b6ab9f83db95e3f9 \
+--api-key <your_api_key> \
 --batch-size 1
-```
 
 Or instead calling with target or prompt only
 
