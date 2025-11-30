@@ -105,6 +105,15 @@ def stream_logs(job_id: str):
     stream_url = f"{API_URL.rstrip('/')}/job/{job_id}/stream"
     print(f"Streaming logs from {stream_url}...\n")
     
+    def show_reconnect_info():
+        """Display reconnection command in a prominent box."""
+        reconnect_cmd = f"python client.py --job_id {job_id}"
+        box_width = len(reconnect_cmd) + 4
+        print(f"\n{BOLD}To reconnect and check status, run:{RESET}")
+        print(f"{CYAN}┌{'─' * (box_width - 2)}┐")
+        print(f"│ {BOLD}{reconnect_cmd}{RESET}{CYAN} │")
+        print(f"└{'─' * (box_width - 2)}┘{RESET}\n")
+    
     try:
         response = requests.get(stream_url, stream=True)
         response.raise_for_status()
@@ -150,16 +159,32 @@ def stream_logs(job_id: str):
                             
                     elif status == "error":
                         print(f"\n[ERROR] {data.get('message')}")
+                        show_reconnect_info()
                     else:
                         print(f"Unknown message: {data}")
                         
                 except json.JSONDecodeError:
                     print(f"Raw output: {line}")
                     
+    except requests.exceptions.ChunkedEncodingError:
+        # This is normal - server closed the connection after streaming is complete
+        print(f"\n{DIM}[Connection closed by server]{RESET}")
+        show_reconnect_info()
+    except requests.exceptions.ConnectionError as e:
+        # Connection issues - provide a friendly message
+        error_str = str(e)
+        if "Connection broken" in error_str or "InvalidChunkLength" in error_str:
+            print(f"\n{DIM}[Stream ended - connection closed]{RESET}")
+            show_reconnect_info()
+        else:
+            print(f"\n{YELLOW}Connection issue: Unable to reach server. Please check your network.{RESET}")
+            show_reconnect_info()
     except requests.exceptions.RequestException as e:
-        print(f"Request failed: {e}")
+        # Other request errors - show details as these might be real issues
+        print(f"\n{YELLOW}Request failed: {e}{RESET}")
         if hasattr(e, 'response') and e.response is not None:
             print(f"Server response: {e.response.text}")
+        show_reconnect_info()
 
 def main():
     parser = argparse.ArgumentParser(description="MimiAI Asset Generation Client")
