@@ -14,5 +14,5 @@ Each cell has full view of such subject. Realistic, not toy, not cartoon.
 Each cell has transparent background except for the subject.
 EOF
 )" \
---api-key mimiaigen-56229deb31c04e11b6ab9f83db95e3f9 \
+--api-key <your_api_key> \
 --batch-size 1
