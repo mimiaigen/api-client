@@ -1,6 +1,11 @@
 # api-client
 This is physical-data-agent api client for MIMIAIGEN V2V (Video-to-Video) Generation.
 
+<video width="100%" controls>
+  <source src="./inference_slow_to_fast.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
+
 
 ### Step.1 Create acccount
 
@@ -21,6 +26,7 @@ Please note the following system constraints for V2V jobs:
 - **Duration:** 3 - 60 seconds
 - **Max frames:** 1500
 - **Max output size (long side):** 1280 pixels (Accepts: 720-1280)
+- **Aspect Ratio:** The original video/frame aspect ratio is preserved during generation. For best performance, use an aspect ratio close to `1280x720` (16:9). Extremely thin rectangular videos may cause degraded results.
 - **Output Format:** You can request the output to be `video`, `frames`, or `both` (Default: `video`).
 - **Output FPS:** 15 FPS (Accepts: 15 ONLY)
 - **Input FPS (Frames ONLY):** When providing a directory of frames instead of a video file, it is **required** to provide the `--input-fps` to correctly calculate the duration and cost.
