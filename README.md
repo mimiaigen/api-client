@@ -1,8 +1,7 @@
 # api-client
 This is the api client for MIMIAIGEN V2V (Video-to-Video) Generation.
 
-https://github.com/user-attachments/assets/inference_slow_to_fast.mp4
-
+![Inference Time Comparison](./inference_slow_to_fast.gif)
 
 ### Step.1 Create acccount
 
