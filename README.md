@@ -1,10 +1,7 @@
 # api-client
-This is physical-data-agent api client for MIMIAIGEN V2V (Video-to-Video) Generation.
+This is the api client for MIMIAIGEN V2V (Video-to-Video) Generation.
 
-<video width="100%" controls>
-  <source src="./inference_slow_to_fast.mp4" type="video/mp4">
-  Your browser does not support the video tag.
-</video>
+https://github.com/user-attachments/assets/inference_slow_to_fast.mp4
 
 
 ### Step.1 Create acccount
