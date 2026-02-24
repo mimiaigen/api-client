@@ -244,7 +244,7 @@ def main():
     # Constraint Information
     # -------------------------------------------------------------
     # - max duration: 60 seconds
-    # - max frames: 900
+    # - max frames: 1500
     # - max output_size (long side): 1280 (Accepts: 720-1280)
     # - output_fps: 15 (Accepts: 15 ONLY)
     # -------------------------------------------------------------
