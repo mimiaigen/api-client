@@ -73,6 +73,7 @@ def start_job(api_key: str, args: argparse.Namespace) -> Optional[str]:
     
     config_data = {
         'prompt': args.prompt,
+        'input_fps': args.input_fps,
         'output_fps': args.output_fps,
         'output_format': args.output_format,
         'output_size': args.output_size,
@@ -255,6 +256,7 @@ def main():
     parser.add_argument("--output-fps", type=float, default=15.0, help="Target output frame rate. Must be exactly 15.0.")
     parser.add_argument("--output-format", choices=["video", "frames", "both"], default="both", help="Requested output format")
     parser.add_argument("--output-size", type=int, default=1280, help="Output resolution constraint in pixels. Must be between 720 and 1280.")
+    parser.add_argument("--input-fps", type=float, default=15.0, help="Input frame rate. Useful for frames directory input. Default is 15.0.")
     
     
     # Job Management
