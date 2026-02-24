@@ -140,115 +140,131 @@ def stream_logs(job_id: str):
         
         seen_stages = set()
         last_line_active = False
+        buffer = b""
         
-        for line in response.iter_lines(chunk_size=1):
-            if line:
-                try:
-                    data = json.loads(line.decode('utf-8'))
-                    status = data.get("status")
-                    
-                    if status == "progress":
-                        message = data.get('message')
-                        client_status = data.get("client_status")
+        for chunk in response.iter_content(chunk_size=1):
+            if chunk:
+                buffer += chunk
+                if chunk == b"\n":
+                    line = buffer.decode('utf-8').strip()
+                    buffer = b""
+                    if not line:
+                        continue
                         
-                        # Handle the main [SERVER] Category Header
-                        if client_status and client_status not in seen_stages:
-                            if last_line_active: print("", flush=True)
-                            seen_stages.add(client_status)
-                            print(f"[{CYAN}{BOLD}{client_status}{RESET}]", flush=True)
-                            last_line_active = False
+                    try:
+                        data = json.loads(line)
+                        status = data.get("status")
                         
-                        # Display stage completion messages with duration
-                        if message and message.startswith("[STAGE_COMPLETE]"):
-                            completion_msg = message.replace("[STAGE_COMPLETE] ", "")
-                            if last_line_active:
-                                # Overwrite the "..." line
-                                print(f"\r   ✓ {completion_msg}", flush=True)
-                            else:
-                                print(f"   ✓ {completion_msg}", flush=True)
-                            last_line_active = False
-                        
-                        # Display stage start messages ending with "..."
-                        elif message and message.endswith("..."):
-                            if last_line_active: print("", flush=True)
-                            print(f"   {message}", end="", flush=True)
-                            last_line_active = True
-                        
-                        # Print other log messages dimmed (if any)
-                        elif message:
-                            if last_line_active: print("", flush=True)
-                            print(f"{DIM}   {message}{RESET}", flush=True)
-                            last_line_active = False
-                        
-                    elif status == "success":
-                        print("\n--- Generation Complete ---")
-                        if "total_duration" in data:
-                            print(f"Total Time: {data['total_duration']:.1f}s")
+                        if status == "progress":
+                            message = data.get('message')
+                            client_status = data.get("client_status")
                             
-                        result = data.get("result", {})
-                        print(f"Message: {result.get('message', 'Success')}")
-                        
-                        download_links = result.get("download_links", [])
-                        if download_links:
-                            print("Download links:")
-                            for link in download_links:
-                                print(f"- {link}")
+                            # Handle the main Category Header
+                            if client_status and client_status not in seen_stages:
+                                if last_line_active: 
+                                    print("", flush=True)
+                                seen_stages.add(client_status)
+                                print(f"[{CYAN}{BOLD}{client_status}{RESET}]", flush=True)
+                                last_line_active = False
+                            
+                            # Display stage completion messages with duration
+                            if message and message.startswith("[STAGE_COMPLETE]"):
+                                completion_msg = message.replace("[STAGE_COMPLETE] ", "")
+                                if last_line_active:
+                                    # Overwrite the "..." line
+                                    print(f"\r   ✓ {completion_msg}", flush=True)
+                                else:
+                                    print(f"   ✓ {completion_msg}", flush=True)
+                                last_line_active = False
+                            
+                            # Display stage start messages ending with "..."
+                            elif message and message.endswith("..."):
+                                if last_line_active: 
+                                    print("", flush=True)
+                                print(f"   {message}", end="", flush=True)
+                                last_line_active = True
+                            
+                            # Print other log messages dimmed
+                            elif message:
+                                if last_line_active: 
+                                    print("", flush=True)
+                                print(f"{DIM}   {message}{RESET}", flush=True)
+                                last_line_active = False
                                 
-                            # Automatically download and extract the first link
-                            first_link = download_links[0]
-                            print(f"\nDownloading artifacts from {first_link}...")
-                            try:
-                                dl_response = requests.get(first_link, stream=True)
-                                dl_response.raise_for_status()
+                        elif status == "success":
+                            if last_line_active: print("", flush=True)
+                            print("\n--- Generation Complete ---", flush=True)
+                            if "total_duration" in data:
+                                print(f"Total Time: {data['total_duration']:.1f}s", flush=True)
                                 
-                                import time
-                                timestamp = int(time.time())
-                                output_zip = f"{job_id}_{timestamp}.zip"
-                                
-                                with open(output_zip, 'wb') as f:
-                                    for chunk in dl_response.iter_content(chunk_size=8192):
-                                        f.write(chunk)
-                                        
-                                print(f"Extracting {output_zip}...")
-                                output_dir = f"{job_id}_{timestamp}"
-                                os.makedirs(output_dir, exist_ok=True)
-                                
+                            result = data.get("result", {})
+                            print(f"Message: {result.get('message', 'Success')}", flush=True)
+                            
+                            download_links = result.get("download_links", [])
+                            if download_links:
+                                print("Download links:", flush=True)
+                                for link in download_links:
+                                    print(f"- {link}", flush=True)
+                                    
+                                # Automatically download and extract the first link
+                                first_link = download_links[0]
+                                print(f"\nDownloading artifacts from {first_link}...", flush=True)
                                 try:
-                                    with zipfile.ZipFile(output_zip, 'r') as zf:
-                                        zf.extractall(output_dir)
-                                    print(f"Extracted artifacts to {output_dir}/")
-                                    os.remove(output_zip)
-                                except zipfile.BadZipFile:
-                                    print("Error: Received invalid ZIP file.")
-                            except Exception as dl_err:
-                                print(f"Error downloading artifacts: {dl_err}")
-                        else:
-                            print("No download links found in the response.")
+                                    dl_response = requests.get(first_link, stream=True)
+                                    dl_response.raise_for_status()
+                                    
+                                    import time
+                                    timestamp = int(time.time())
+                                    output_zip = f"{job_id}_{timestamp}.zip"
+                                    
+                                    with open(output_zip, 'wb') as f:
+                                        for dl_chunk in dl_response.iter_content(chunk_size=8192):
+                                            f.write(dl_chunk)
+                                            
+                                    print(f"Extracting {output_zip}...", flush=True)
+                                    output_dir = f"{job_id}_{timestamp}"
+                                    os.makedirs(output_dir, exist_ok=True)
+                                    
+                                    try:
+                                        with zipfile.ZipFile(output_zip, 'r') as zf:
+                                            zf.extractall(output_dir)
+                                        print(f"Extracted artifacts to {output_dir}/", flush=True)
+                                        os.remove(output_zip)
+                                    except zipfile.BadZipFile:
+                                        print("Error: Received invalid ZIP file.", flush=True)
+                                except Exception as dl_err:
+                                    print(f"Error downloading artifacts: {dl_err}", flush=True)
+                            else:
+                                print("No download links found in the response.", flush=True)
+                                break # End of job if success but no links? Or just break anyway
+                            break
+
+                        elif status == "error":
+                            if last_line_active: print("", flush=True)
+                            print(f"\n[ERROR] {data.get('message')}", flush=True)
+                            show_reconnect_info()
+                            break
                             
-                    elif status == "error":
-                        print(f"\n[ERROR] {data.get('message')}")
-                        show_reconnect_info()
-                    else:
-                        print(f"Unknown message: {data}")
+                    except json.JSONDecodeError:
+                        # Heartbeat or malformed lines
+                        pass
+                    except Exception as e:
+                        print(f"Error processing stream: {e}", flush=True)
+                        break
                         
-                except json.JSONDecodeError:
-                    print(f"Raw output: {line}")
-                    
     except requests.exceptions.ChunkedEncodingError:
-        print(f"\n{DIM}[Connection closed by server]{RESET}")
+        print(f"\n{DIM}[Connection closed by server]{RESET}", flush=True)
         show_reconnect_info()
     except requests.exceptions.ConnectionError as e:
         error_str = str(e)
         if "Connection broken" in error_str or "InvalidChunkLength" in error_str:
-            print(f"\n{DIM}[Stream ended - connection closed]{RESET}")
+            print(f"\n{DIM}[Stream ended - connection closed]{RESET}", flush=True)
             show_reconnect_info()
         else:
-            print(f"\n{YELLOW}Connection issue: Unable to reach server. Please check your network.{RESET}")
+            print(f"\n{YELLOW}Connection issue: Unable to reach server.{RESET}", flush=True)
             show_reconnect_info()
-    except requests.exceptions.RequestException as e:
-        print(f"\n{YELLOW}Request failed: {e}{RESET}")
-        if hasattr(e, 'response') and e.response is not None:
-            print(f"Server response: {e.response.text}")
+    except Exception as e:
+        print(f"\n{YELLOW}Request failed: {e}{RESET}", flush=True)
         show_reconnect_info()
 
 def main():
