@@ -138,9 +138,10 @@ def stream_logs(job_id: str):
         
         print("--- Real-time Progress ---")
         
-        seen_stages = set()  # Track which stages we've already announced
+        seen_stages = set()
+        last_line_active = False
         
-        for line in response.iter_lines():
+        for line in response.iter_lines(chunk_size=1):
             if line:
                 try:
                     data = json.loads(line.decode('utf-8'))
@@ -150,19 +151,34 @@ def stream_logs(job_id: str):
                         message = data.get('message')
                         client_status = data.get("client_status")
                         
+                        # Handle the main [SERVER] Category Header
+                        if client_status and client_status not in seen_stages:
+                            if last_line_active: print("", flush=True)
+                            seen_stages.add(client_status)
+                            print(f"[{CYAN}{BOLD}{client_status}{RESET}]", flush=True)
+                            last_line_active = False
+                        
                         # Display stage completion messages with duration
                         if message and message.startswith("[STAGE_COMPLETE]"):
                             completion_msg = message.replace("[STAGE_COMPLETE] ", "")
-                            print(f"   ✓ {completion_msg}")
+                            if last_line_active:
+                                # Overwrite the "..." line
+                                print(f"\r   ✓ {completion_msg}", flush=True)
+                            else:
+                                print(f"   ✓ {completion_msg}", flush=True)
+                            last_line_active = False
                         
-                        # Display stage start messages (only once per stage)
-                        elif client_status and client_status not in seen_stages:
-                            seen_stages.add(client_status)
-                            print(f"[SERVER] {client_status}...")
+                        # Display stage start messages ending with "..."
+                        elif message and message.endswith("..."):
+                            if last_line_active: print("", flush=True)
+                            print(f"   {message}", end="", flush=True)
+                            last_line_active = True
                         
-                        # Print other log messages dimmed to show progress
+                        # Print other log messages dimmed (if any)
                         elif message:
-                             print(f"{DIM}   {message}{RESET}")
+                            if last_line_active: print("", flush=True)
+                            print(f"{DIM}   {message}{RESET}", flush=True)
+                            last_line_active = False
                         
                     elif status == "success":
                         print("\n--- Generation Complete ---")
