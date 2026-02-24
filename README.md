@@ -1,5 +1,5 @@
 # api-client
-This is physical-data-agent api client to call end2end generation including 3D asset and 4D interaction.
+This is physical-data-agent api client for MIMIAIGEN V2V (Video-to-Video) Generation.
 
 
 ### Step.1 Create acccount
@@ -12,43 +12,44 @@ This is physical-data-agent api client to call end2end generation including 3D a
 Go to [api page](https://mimiaigen.com/api)
 
 Choose your api-key name, press create and copy the api key.
+Alternatively, you can set the `MIMIAI_API_KEY` environment variable.
 
 
-### Step.3 Calling the client with image input
+### API Limitations & Constraints
 
+Please note the following system constraints for V2V jobs:
+- **Max duration:** 60 seconds
+- **Max frames:** 900
+- **Max output size (long side):** 1280 pixels (Accepts: 720-1280)
+- **Output FPS:** 15 FPS (Accepts: 15 ONLY)
+
+
+### Step.3 Calling the V2V client
+
+You can provide an input video (`.mp4`) or a directory containing frames.
+
+```bash
+# Using an input video file
+python mimiaigen_v2v_client.py \
+--input-media './examples/input_video.mp4' \
+--prompt 'Sunset. Yellow dirt. Farm like background.' \
+--api-key <your_api_key>
+
+# Using a directory of frames with additional options
+python mimiaigen_v2v_client.py \
+--input-media './examples/frames_dir/' \
+--prompt 'Make it look like a snowy winter day.' \
+--output-size 1280 \
+--output-fps 15.0 \
+--output-format both \
+--api-key <your_api_key>
 ```
-python client.py --target "apple tree" \
---image './examples/apple_tree.jpeg' \
---api-key <your_api_key> \
---batch-size 1
 
-python client.py --target "pistachio tree" \
---image './examples/pistachio_tree.png' \
---api-key <your_api_key> \
---batch-size 1
 
-python client.py --target "vine tree" \
---image './examples/vine_tree.png' \
---api-key <your_api_key> \
---batch-size 1
+### Step.4 Reconnecting to a running job
 
-python client.py --target "strawberry bed with black plastic cover" \
---image './examples/strawberry_bed.png' \
---prompt "Isolate the input image into a single row of {TARGET} top-down 45 degree view, transparent background, and generate in different styles with realistic variations, no ground, no tool, not toy, only realistic {TARGET}" \
---api-key <your_api_key> \
---batch-size 1
-```
+If your connection drops or you want to check the status later, you can reconnect to an existing job using its ID without re-uploading the media:
 
-Or instead calling with target or prompt only
-
-```
-python client.py --target "a single apple" \
---api-key <your_api_key> \
---batch-size 1
-
-python client.py --target "a single apple" \
---prompt 'Generate {TARGET} in a diverse way.' \
---api-key <your_api_key> \
---batch-size 1
-
+```bash
+python mimiaigen_v2v_client.py --job_id <your_job_id>
 ```

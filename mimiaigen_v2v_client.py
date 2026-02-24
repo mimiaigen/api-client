@@ -1,16 +1,18 @@
 import requests
-import base64
 import argparse
 import json
 import sys
 import os
+import time
+import zipfile
+import tempfile
 from pathlib import Path
 from typing import Optional, Dict, Any
 
 # Constants
-API_URL = "https://mimiaigen--physical-data-agent-api.modal.run"
+API_URL = "https://mimiaigen--v2v-app-api.modal.run"
 DEFAULT_PROMPT = """
-Generate {TARGET} in different styles, make realistic variations
+Sunset. Yellow dirt. Farm like background.
 """
 
 # ANSI color codes
@@ -27,47 +29,60 @@ def get_api_key(args_key: Optional[str]) -> str:
     """
     api_key = args_key or os.getenv("MIMIAI_API_KEY")
     if not api_key:
-        # If we are just reconnecting, we might not need it immediately, 
-        # but for starting jobs it is required.
-        # The main logic handles the requirement check.
         return ""
     return api_key
 
 def start_job(api_key: str, args: argparse.Namespace) -> Optional[str]:
     """
-    Start a new asset generation job.
+    Start a new V2V generation job.
     Returns the job_id if successful, None otherwise.
     """
-    # Build payload
-    payload = {
-        "prompt": args.prompt,
-        "target": args.target,
-        "batch_size": args.batch_size,
-    }
+    # Validate input
+    if not os.path.exists(args.input_media):
+        print(f"{YELLOW}Error: Input media not found: {args.input_media}{RESET}")
+        return None
+        
+    input_format = "frames_dir" if os.path.isdir(args.input_media) else "video"
+    upload_file_path = args.input_media
+    clean_upload = False
     
-    # Encode image if provided
-    if args.image and args.image.lower() != "none":
-        image_path = Path(args.image)
-        if image_path.exists():
-            with open(image_path, "rb") as f:
-                image_b64 = base64.b64encode(f.read()).decode("utf-8")
-            payload["image_base64"] = image_b64
-            print(f"Using image: {args.image}")
-        else:
-            print(f"Warning: Image not found at {image_path}, proceeding without image")
-    else:
-        print("No image provided, using text-only generation")
+    if input_format == "frames_dir":
+        print(f"Zipping frames directory: {args.input_media}...")
+        temp_zip = tempfile.NamedTemporaryFile(suffix=".zip", delete=False)
+        temp_zip.close()
+        
+        with zipfile.ZipFile(temp_zip.name, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            for root, _, files in os.walk(args.input_media):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    arcname = os.path.relpath(file_path, args.input_media)
+                    zipf.write(file_path, arcname)
+        
+        upload_file_path = temp_zip.name
+        clean_upload = True
     
     # Set up authorization headers
     headers = {
         "Authorization": f"Bearer {api_key}"
     }
+
+    files = {
+        'input_media': (os.path.basename(upload_file_path), open(upload_file_path, 'rb'), 
+                        'application/zip' if input_format == 'frames_dir' else 'video/mp4')
+    }
     
-    endpoint = f"{API_URL.rstrip('/')}/v1/end2end-asset-gen"
-    print(f"Sending request to {endpoint}...")
+    config_data = {
+        'prompt': args.prompt,
+        'output_fps': args.output_fps,
+        'output_format': args.output_format,
+        'output_size': args.output_size,
+    }
+    
+    endpoint = f"{API_URL.rstrip('/')}/v1/video2video-gen"
+    print(f"Sending request...")
     
     try:
-        response = requests.post(endpoint, json=payload, headers=headers)
+        response = requests.post(endpoint, data=config_data, files=files, headers=headers)
         response.raise_for_status()
         
         job_data = response.json()
@@ -76,13 +91,13 @@ def start_job(api_key: str, args: argparse.Namespace) -> Optional[str]:
         batch_size = job_data.get("batch_size", 1)
         
         # Create a prominent box with the reconnection info
-        reconnect_cmd = f"python client.py --job_id {job_id}"
+        reconnect_cmd = f"python mimiaigen_v2v_client.py --job_id {job_id}"
         box_width = len(reconnect_cmd) + 4
         
         print(f"\n{GREEN}{'=' * box_width}")
         print(f"  Job started! ID: {CYAN}{BOLD}{job_id}{RESET}{GREEN}")
         print(f"  Credits remaining: {YELLOW}{BOLD}{credits_remaining}{RESET}{GREEN}")
-        print(f"  ({batch_size} credit(s) will be deducted upon completion)")
+        print(f"  (Cost will be exactly calculated per decoded video seconds upon completion)")
         print(f"{'=' * box_width}{RESET}")
         print(f"\n{BOLD}To reconnect later, run:{RESET}")
         print(f"{CYAN}┌{'─' * (box_width - 2)}┐")
@@ -96,6 +111,9 @@ def start_job(api_key: str, args: argparse.Namespace) -> Optional[str]:
         if hasattr(e, 'response') and e.response is not None:
             print(f"Server response: {e.response.text}")
         return None
+    finally:
+        if clean_upload and os.path.exists(upload_file_path):
+            os.remove(upload_file_path)
 
 def stream_logs(job_id: str):
     """
@@ -106,7 +124,7 @@ def stream_logs(job_id: str):
     
     def show_reconnect_info():
         """Display reconnection command in a prominent box."""
-        reconnect_cmd = f"python client.py --job_id {job_id}"
+        reconnect_cmd = f"python mimiaigen_v2v_client.py --job_id {job_id}"
         box_width = len(reconnect_cmd) + 4
         print(f"\n{BOLD}To reconnect and check status, run:{RESET}")
         print(f"{CYAN}┌{'─' * (box_width - 2)}┐")
@@ -152,9 +170,43 @@ def stream_logs(job_id: str):
                             
                         result = data.get("result", {})
                         print(f"Message: {result.get('message', 'Success')}")
-                        print("Download links:")
-                        for link in result.get("download_links", []):
-                            print(f"- {link}")
+                        
+                        download_links = result.get("download_links", [])
+                        if download_links:
+                            print("Download links:")
+                            for link in download_links:
+                                print(f"- {link}")
+                                
+                            # Automatically download and extract the first link
+                            first_link = download_links[0]
+                            print(f"\nDownloading artifacts from {first_link}...")
+                            try:
+                                dl_response = requests.get(first_link, stream=True)
+                                dl_response.raise_for_status()
+                                
+                                import time
+                                timestamp = int(time.time())
+                                output_zip = f"{job_id}_{timestamp}.zip"
+                                
+                                with open(output_zip, 'wb') as f:
+                                    for chunk in dl_response.iter_content(chunk_size=8192):
+                                        f.write(chunk)
+                                        
+                                print(f"Extracting {output_zip}...")
+                                output_dir = f"{job_id}_{timestamp}"
+                                os.makedirs(output_dir, exist_ok=True)
+                                
+                                try:
+                                    with zipfile.ZipFile(output_zip, 'r') as zf:
+                                        zf.extractall(output_dir)
+                                    print(f"Extracted artifacts to {output_dir}/")
+                                    os.remove(output_zip)
+                                except zipfile.BadZipFile:
+                                    print("Error: Received invalid ZIP file.")
+                            except Exception as dl_err:
+                                print(f"Error downloading artifacts: {dl_err}")
+                        else:
+                            print("No download links found in the response.")
                             
                     elif status == "error":
                         print(f"\n[ERROR] {data.get('message')}")
@@ -166,11 +218,9 @@ def stream_logs(job_id: str):
                     print(f"Raw output: {line}")
                     
     except requests.exceptions.ChunkedEncodingError:
-        # This is normal - server closed the connection after streaming is complete
         print(f"\n{DIM}[Connection closed by server]{RESET}")
         show_reconnect_info()
     except requests.exceptions.ConnectionError as e:
-        # Connection issues - provide a friendly message
         error_str = str(e)
         if "Connection broken" in error_str or "InvalidChunkLength" in error_str:
             print(f"\n{DIM}[Stream ended - connection closed]{RESET}")
@@ -179,23 +229,33 @@ def stream_logs(job_id: str):
             print(f"\n{YELLOW}Connection issue: Unable to reach server. Please check your network.{RESET}")
             show_reconnect_info()
     except requests.exceptions.RequestException as e:
-        # Other request errors - show details as these might be real issues
         print(f"\n{YELLOW}Request failed: {e}{RESET}")
         if hasattr(e, 'response') and e.response is not None:
             print(f"Server response: {e.response.text}")
         show_reconnect_info()
 
 def main():
-    parser = argparse.ArgumentParser(description="MimiAI Asset Generation Client")
+    parser = argparse.ArgumentParser(description="MIMIAIGEN V2V Generation Client")
     
     # Authentication
     parser.add_argument("--api-key", help="Your API key (required for new jobs). Defaults to MIMIAI_API_KEY env var.")
     
+    # -------------------------------------------------------------
+    # Constraint Information
+    # -------------------------------------------------------------
+    # - max duration: 60 seconds
+    # - max frames: 900
+    # - max output_size (long side): 1280 (Accepts: 720-1280)
+    # - output_fps: 15 (Accepts: 15 ONLY)
+    # -------------------------------------------------------------
+    
     # Job Configuration
-    parser.add_argument("--target", help="Target object name to replace {TARGET} in prompt (e.g., 'apple', 'tree')")
-    parser.add_argument("--image", help="Path to input image (optional)")
+    parser.add_argument("--input-media", help="Path to input video (.mp4) or directory of frames")
     parser.add_argument("--prompt", default=DEFAULT_PROMPT, help="Custom prompt for generation")
-    parser.add_argument("--batch-size", type=int, default=1, help="Number of variations to generate (default: 1)")
+    parser.add_argument("--output-fps", type=float, default=15.0, help="Target output frame rate. Must be exactly 15.0.")
+    parser.add_argument("--output-format", choices=["video", "frames", "both"], default="both", help="Requested output format")
+    parser.add_argument("--output-size", type=int, default=1280, help="Output resolution constraint in pixels. Must be between 720 and 1280.")
+    
     
     # Job Management
     parser.add_argument("--job_id", help="Reconnect to an existing job ID")
@@ -211,12 +271,15 @@ def main():
         if not api_key:
              parser.error("--api-key is required when starting a new job. Set MIMIAI_API_KEY env var or pass --api-key.")
         
+        if not args.input_media:
+             parser.error("--input-media is required when starting a new job.")
+
         # Start new job
         job_id = start_job(api_key, args)
         if not job_id:
-            return # Exit if job start failed
+            return
 
-    # Stream logs (for both new and existing jobs)
+    # Stream logs
     if job_id:
         if args.job_id:
             print(f"Reconnecting to existing job: {job_id}")
