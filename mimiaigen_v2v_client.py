@@ -120,7 +120,7 @@ def stream_logs(job_id: str):
     Stream logs for a given job ID.
     """
     stream_url = f"{API_URL.rstrip('/')}/job/{job_id}/stream"
-    print(f"Streaming logs from {stream_url}...\n")
+    print(f"Streaming logs...\n")
     
     def show_reconnect_info():
         """Display reconnection command in a prominent box."""
