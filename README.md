@@ -12,8 +12,7 @@ This is the api client for MIMIAIGEN V2V (Video-to-Video) Generation.
 
 Go to [api page](https://mimiaigen.com/api)
 
-Choose your api-key name, press create and copy the api key.
-Alternatively, you can set the `MIMIAI_API_KEY` environment variable.
+Create and copy your api key.
 
 
 ### API Limitations & Constraints
