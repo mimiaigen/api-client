@@ -3,3 +3,4 @@ output_api_*/
 job_*/
 __pycache__
 *.mp4
+*.zip
