@@ -1,0 +1,5 @@
+output_api_*/
+.env
+job_*/
+__pycache__
+*.mp4
