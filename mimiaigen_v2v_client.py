@@ -77,6 +77,8 @@ def start_job(api_key: str, args: argparse.Namespace) -> Optional[str]:
         'output_fps': args.output_fps,
         'output_format': args.output_format,
         'output_size': args.output_size,
+        'w_da2': args.weight,
+        'w_video_conditioning': args.strength,
     }
     
     endpoint = f"{API_URL.rstrip('/')}/v1/video2video-gen"
@@ -371,6 +373,8 @@ def main():
     parser.add_argument("--output-format", choices=["video", "frames", "both"], default="both", help="Requested output format")
     parser.add_argument("--output-size", type=int, default=1280, help="Output resolution constraint in pixels. Must be between 720 and 1280.")
     parser.add_argument("--input-fps", type=float, default=15.0, help="Input frame rate. Useful for frames directory input. Default is 15.0.")
+    parser.add_argument("--weight", type=float, default=1.0, help="Depth weight (Default 0.5, acceptable range 0.5-1.0)")
+    parser.add_argument("--strength", type=float, default=1.5, help="Video conditioning strength (Default 1.0, acceptable range 1.0-1.5)")
     
     
     # Job Management
